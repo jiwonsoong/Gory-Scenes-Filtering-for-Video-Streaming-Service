@@ -31,7 +31,7 @@ createVideoButton.addEventListener("click", async () => {
                 // const videoUrl = URL.createObjectURL(blob);  // Blob 객체로부터 URL 생성
 
                 const data = await response.json(); // 서버로부터 URL을 JSON 형태로 받음
-                const videoUrl = data.videoUrl; // JSON에서 URL 추출
+                const videoUrl = data.videoUrl; // JSON에서 URL 추출S
 
                 // 비디오 URL 저장 및 버튼 보이기
                 viewVideoButton.dataset.videoUrl = videoUrl;
