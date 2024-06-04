@@ -61,15 +61,17 @@ def gen_frames_and_encode(output_filename):
     ffmpeg_process = start_ffmpeg_process(output_path)
 
     try:
+        i = 0
         while True:
+            print(f"Video is being made. {i}")
+            i += 1
+
             ret, frame = cap.read()  # 프레임 받아온다. ret: 성공 True, 실패 False. frame: 현재 프레임 (numpy.ndarray)
             if not ret:
                 break
-
             results = model(frame) # 프레임에 모델을 적용하여 객체 감지
 
             # Ultralytics 결과를 Supervision의 Detections 객체로 변환
-            #print(results)
             detections = sv.Detections.from_yolov5(results)
 
             # Supervision 블러 처리
@@ -81,9 +83,11 @@ def gen_frames_and_encode(output_filename):
 
             # 프레임을 JPEG 이미지 형식으로 인코딩
             ret, buffer = cv2.imencode('.jpg', annotated_frame)
+
             # ffmpeg로 전송
             try:
                 ffmpeg_process.stdin.write(buffer.tobytes())
+                # 중단되는 경우가 발생하는데, 그 경우에 여기서 못 넘어감
                 ffmpeg_process.stdin.flush()  # 버퍼 플러시
             except BrokenPipeError as e:
                 print("FFmpeg has closed the pipe:", e)
@@ -119,6 +123,19 @@ def video_show():
 def get_video():
     video_id = request.args.get('videoId')  # 'url' 파라미터로 전달된 비디오 ID를 받음
     print(video_id)
+
+    video_file_path = os.path.join(app.static_folder, f'output_{video_id}.mp4')
+    # 파일이 존재하는지 확인하고 삭제
+    if os.path.exists(video_file_path):
+        try:
+            os.remove(video_file_path)
+            print(f'Deleted existing file: {video_file_path}')
+        except OSError as e:
+            print(f'Error deleting file {video_file_path}: {e}')
+    else:
+        print(f'File does not exist: {video_file_path}.')
+    print('File generating starts...')
+
     video_url = get_youtube_url(video_id)   # yt-dlp를 사용해 실시간 스트리밍 URL을 추출
     global cap  # 전역 변수 사용을 명시
     cap = cv2.VideoCapture(video_url)  # 새로운 비디오 URL로 비디오 캡처 객체 갱신
@@ -141,8 +158,13 @@ def get_video():
     print(app.static_folder)
     gen_frames_and_encode(output_path)  # 프레임 생성 및 인코딩
 
-    video_url = url_for('static', filename=output_filename)  # 생성된 비디오 파일에 대한 URL 생성
-    return jsonify({"videoUrl": video_url})
+    video_url = url_for('static', filename=output_filename, _external=True)  # 생성된 비디오 파일에 대한 URL 생성
+
+    print(video_url)
+    response = jsonify({"videoUrl": video_url})
+    print(response)
+    response.headers['ngrok-skip-browser-warning'] = 'skip-browser-warning'  # ngrok 브라우저 경고 스킵
+    return response
 
 
 # Flask 애플리케이션 시작
