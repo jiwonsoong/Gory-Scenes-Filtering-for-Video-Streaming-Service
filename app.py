@@ -48,7 +48,8 @@ def start_ffmpeg_process(output_path):
         '-preset', 'fast',  # 인코딩 속도와 품질의 균형 설정
         output_path  # 출력 파일명
     ]
-    return subprocess.Popen(command, stdin=subprocess.PIPE, stderr=subprocess.PIPE)
+    #return subprocess.Popen(command, stdin=subprocess.PIPE, stderr=subprocess.PIPE)
+    return subprocess.Popen(command, stdin=subprocess.PIPE)
 
 # 프레임 생성하여 ffmpeg로 전송
 def gen_frames_and_encode(output_filename):
@@ -65,6 +66,7 @@ def gen_frames_and_encode(output_filename):
         while True:
             print(f"Video is being made. {i}")
             i += 1
+            #print("동작하나?")
 
             ret, frame = cap.read()  # 프레임 받아온다. ret: 성공 True, 실패 False. frame: 현재 프레임 (numpy.ndarray)
             if not ret:
@@ -86,21 +88,24 @@ def gen_frames_and_encode(output_filename):
 
             # ffmpeg로 전송
             try:
-                ffmpeg_process.stdin.write(buffer.tobytes())
-                # 중단되는 경우가 발생하는데, 그 경우에 여기서 못 넘어감
+                ffmpeg_process.stdin.write(buffer.tobytes()) # 중단되는 경우가 발생하는데, 그 경우에 여기서 못 넘어감
                 ffmpeg_process.stdin.flush()  # 버퍼 플러시
+                # FFMPEG는 stderr에 지속해서 기록하므로 버퍼가 계속 차게 된다. stderr을 사용하지 않거나, 비워주어야 한다.
+                # ffmpeg_process.stderr.close()
+                # ffmpeg_process.stderr.readline()
+
             except BrokenPipeError as e:
                 print("FFmpeg has closed the pipe:", e)
-                stderr_output = ffmpeg_process.stderr.read().decode()
-                print("FFmpeg stderr:", stderr_output)
+                # stderr_output = ffmpeg_process.stderr.read().decode()
+                # print("FFmpeg stderr:", stderr_output)
                 break
     finally:
         # FFmpeg 종료 처리
         ffmpeg_process.stdin.close()
         print('Sending EOF to FFmpeg')
         try:
-            stderr_output = ffmpeg_process.stderr.read().decode()
-            print("FFmpeg stderr:", stderr_output)
+            # stderr_output = ffmpeg_process.stderr.read().decode()
+            # print("FFmpeg stderr:", stderr_output)
             exit_code = ffmpeg_process.wait(timeout=10)  # 10초 후에 대기를 종료
             print('FFmpeg process exited with code', exit_code)
         except subprocess.TimeoutExpired:
