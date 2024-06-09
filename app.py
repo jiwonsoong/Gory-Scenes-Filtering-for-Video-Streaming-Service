@@ -16,9 +16,9 @@ app = Flask(__name__)
 CORS(app)
 
 # 모델 로드
-model_weights = 'model/best.pt' # 가중치 파일의 경로
+model_weights = 'model/best_v1.2.pt' # 가중치 파일의 경로
 model = torch.hub.load('yolov5', 'custom', path=model_weights, source='local', force_reload=True)
-model.conf = 0.6
+#model.conf = 0.6
 # model.iou = 0.45
 
 # 모델 input을 위한 영상의 스트리밍 url 획득
@@ -36,37 +36,41 @@ def get_youtube_url(video_id):
     return url
 
 # ffmpeg 프로세스 설정
-def start_ffmpeg_process(output_path):
+def start_ffmpeg_process(output_path, framerate):
     command = [
         'ffmpeg',
         '-y',   # 덮어쓰기
         '-f', 'image2pipe',
+        '-framerate', str(framerate),  # 입력 프레임 속도 설정
         '-i', '-',  # 표준 입력에서 프레임을 읽음
         '-pix_fmt', 'yuv420p',  # 대부분의 플레이어와 호환되는 픽셀 포맷
-        '-vcodec', 'libx264',  # H.264 코덱 사용
+        '-vcodec', 'libx264',  # 코덱
         '-crf', '23',  # 영상 품질과 압축률 설정 (값이 낮을수록 품질이 좋음)
         '-preset', 'fast',  # 인코딩 속도와 품질의 균형 설정
+        # '-threads', '4', # 멀티스레딩
+        '-r', str(framerate),  # 출력 프레임 속도 설정
         output_path  # 출력 파일명
     ]
     #return subprocess.Popen(command, stdin=subprocess.PIPE, stderr=subprocess.PIPE)
     return subprocess.Popen(command, stdin=subprocess.PIPE)
 
 # 프레임 생성하여 ffmpeg로 전송
-def gen_frames_and_encode(output_filename):
+def gen_frames_and_encode(output_filename, framerate):
     # output_dir = 'output'
     # if not os.path.exists(output_dir):
     #     os.makedirs(output_dir)  # 디렉토리가 없다면 생성
     #
     # output_path = f'{output_dir}/{output_filename}'
     output_path = f'{output_filename}'
-    ffmpeg_process = start_ffmpeg_process(output_path)
+    ffmpeg_process = start_ffmpeg_process(output_path, framerate)
 
     try:
         i = 0
+        blur_annotator = sv.BlurAnnotator()
+
         while True:
             print(f"Video is being made. {i}")
             i += 1
-            #print("동작하나?")
 
             ret, frame = cap.read()  # 프레임 받아온다. ret: 성공 True, 실패 False. frame: 현재 프레임 (numpy.ndarray)
             if not ret:
@@ -76,15 +80,25 @@ def gen_frames_and_encode(output_filename):
             # Ultralytics 결과를 Supervision의 Detections 객체로 변환
             detections = sv.Detections.from_yolov5(results)
 
+            # 객체가 감지된 경우에만 블러 처리
+            if len(detections) > 0:
+                # Supervision 블러 처리
+                annotated_frame = blur_annotator.annotate(
+                    scene=frame,  # 원본 프레임 복사
+                    detections=detections
+                )
+            else:
+                annotated_frame = frame  # 객체가 감지되지 않은 경우 원본 프레임 사용
+
             # Supervision 블러 처리
-            blur_annotator = sv.BlurAnnotator()
-            annotated_frame = blur_annotator.annotate(
-                scene=frame.copy(),  # 원본 프레임 복사
-                detections=detections
-            )
+            # annotated_frame = blur_annotator.annotate(
+            #     scene=frame,  # 원본 프레임 복사
+            #     detections=detections
+            # )
 
             # 프레임을 JPEG 이미지 형식으로 인코딩
             ret, buffer = cv2.imencode('.jpg', annotated_frame)
+
 
             # ffmpeg로 전송
             try:
@@ -93,7 +107,6 @@ def gen_frames_and_encode(output_filename):
                 # FFMPEG는 stderr에 지속해서 기록하므로 버퍼가 계속 차게 된다. stderr을 사용하지 않거나, 비워주어야 한다.
                 # ffmpeg_process.stderr.close()
                 # ffmpeg_process.stderr.readline()
-
             except BrokenPipeError as e:
                 print("FFmpeg has closed the pipe:", e)
                 # stderr_output = ffmpeg_process.stderr.read().decode()
@@ -144,24 +157,12 @@ def get_video():
     video_url = get_youtube_url(video_id)   # yt-dlp를 사용해 실시간 스트리밍 URL을 추출
     global cap  # 전역 변수 사용을 명시
     cap = cv2.VideoCapture(video_url)  # 새로운 비디오 URL로 비디오 캡처 객체 갱신
+    framerate = cap.get(cv2.CAP_PROP_FPS)
 
-    #return jsonify({"message": "Received Video ID", "video_id": video_id})
-
-    # output_path = gen_frames_and_encode('output_' + video_id) # gen_frame_and_encode()도 promise 객체 반환하도록
-    #
-    # # 비디오 파일의 경로를 지정
-    # directory = 'output'
-    # filename = output_path.split('/')[-1]
-    # # print(output_path, filename)
-    # response = send_from_directory(directory, filename, as_attachment=False)
-    # response.headers['Content-Type'] = 'video/mp4'
-    # return response
-
-    # 수정사항
     output_filename = 'output_' + video_id + '.mp4'
     output_path = os.path.join(app.static_folder, output_filename)  # 파일 저장 경로 조정
     print(app.static_folder)
-    gen_frames_and_encode(output_path)  # 프레임 생성 및 인코딩
+    gen_frames_and_encode(output_path, framerate)  # 프레임 생성 및 인코딩
 
     video_url = url_for('static', filename=output_filename, _external=True)  # 생성된 비디오 파일에 대한 URL 생성
 
