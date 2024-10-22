@@ -8,13 +8,13 @@
 - **Pytorch**: 이미지 처리 및 모델 학습
   
 ### Backend
-- **Flask**: 백엔드 API 서버 구축
-- **Python**: 백엔드 개발
+- **Flask**
+- **Python**
 - 라이브러리
   - **Pytorch**(모델 로드·실행), **Opencv**(이미지 캡쳐·처리), **Yt-dlp**(스트리밍 url 추출), **Ffmpeg**(비디오 파일 변환·스트리밍), **Supervision**(블러 처리)
   
 ### Frontend
-- **Javascript, Html, Css**: 프론트엔드 개발
+- **Javascript, Html, Css**
 
 <br/>
 
