@@ -4,14 +4,13 @@
 
 ## 기술스택
 ### Model
-- **YOLOv8s-seg**: 객체 감지 & 세그멘테이션
-- **Pytorch**: 이미지 처리 및 모델 학습
+- **YOLOv8s-seg**(객체 감지 & 세그멘테이션)
+- **Pytorch**(이미지 처리 및 모델 학습)
   
 ### Backend
 - **Flask**
 - **Python**
-- 라이브러리
-  - **Pytorch**(모델 로드·실행), **Opencv**(이미지 캡쳐·처리), **Yt-dlp**(스트리밍 url 추출), **Ffmpeg**(비디오 파일 변환·스트리밍), **Supervision**(블러 처리)
+- 라이브러리: **Pytorch**(모델 로드·실행), **Opencv**(이미지 캡쳐·처리), **Yt-dlp**(스트리밍 url 추출), **Ffmpeg**(비디오 파일 변환·스트리밍), **Supervision**(블러 처리)
   
 ### Frontend
 - **Javascript, Html, Css**
