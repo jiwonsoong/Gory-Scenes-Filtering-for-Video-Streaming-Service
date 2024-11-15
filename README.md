@@ -24,6 +24,7 @@
 
 
 ## 작동 예시
-<img src="https://github.com/user-attachments/assets/7586721d-fd76-4fc3-8948-2f078097d519" width="500"/>
+![image](https://github.com/user-attachments/assets/5db27dac-62c3-4d14-873e-90c6fad570c5)<br/>
+![image](https://github.com/user-attachments/assets/f81b0d54-034a-440f-91e0-de047533589e)
 <br/>
 
